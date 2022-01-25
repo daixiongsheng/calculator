@@ -42,123 +42,210 @@ extension Color {
 
 struct ContentView: View {
 
-    @State var operators: [Op] = [Op(text: "AC", bg: "#3C3D3F"),
-                                  Op(text: "±", bg: "#3C3D3F"),
-                                  Op(text: "%", bg: "#3C3D3F"),
-                                  Op(text: "÷", bg: "#F59514")]
-    var k_789: [Op] = [Op(text: "7", bg: "#5A5F60"),
-                       Op(text: "8", bg: "#5A5F60"),
-                       Op(text: "9", bg: "#5A5F60"),
-                       Op(text: "×", bg: "#F59514")]
-    var k_456: [Op] = [Op(text: "4", bg: "#5A5F60"),
-                       Op(text: "5", bg: "#5A5F60"),
-                       Op(text: "6", bg: "#5A5F60"),
-                       Op(text: "-", bg: "#F59514")]
-    var k_123: [Op] = [Op(text: "1", bg: "#5A5F60"),
-                       Op(text: "2", bg: "#5A5F60"),
-                       Op(text: "3", bg: "#5A5F60"),
-                       Op(text: "+", bg: "#F59514")]
-    var k_0_dot: [Op] = [Op(text: ".", bg: "#5A5F60"),
-                         Op(text: "=", bg: "#F59514")]
+    @State private var operators: [Op] = [Op(text: "AC", bg: "#3C3D3F"),
+                                          Op(text: "±", bg: "#3C3D3F"),
+                                          Op(text: "%", bg: "#3C3D3F"),
+                                          Op(text: "÷", bg: "#F59514")]
+    private var k_789: [Op] = [Op(text: "7", bg: "#5A5F60"),
+                               Op(text: "8", bg: "#5A5F60"),
+                               Op(text: "9", bg: "#5A5F60"),
+                               Op(text: "×", bg: "#F59514")]
+    private var k_456: [Op] = [Op(text: "4", bg: "#5A5F60"),
+                               Op(text: "5", bg: "#5A5F60"),
+                               Op(text: "6", bg: "#5A5F60"),
+                               Op(text: "-", bg: "#F59514")]
+    private var k_123: [Op] = [Op(text: "1", bg: "#5A5F60"),
+                               Op(text: "2", bg: "#5A5F60"),
+                               Op(text: "3", bg: "#5A5F60"),
+                               Op(text: "+", bg: "#F59514")]
+    private var k_0_dot: [Op] = [Op(text: ".", bg: "#5A5F60"),
+                                 Op(text: "=", bg: "#F59514")]
+    private var zero: [Op] = [Op(text: "0", bg: "#5A5F60")]
 
-    var zero: [Op] = [Op(text: "0", bg: "#5A5F60")]
-
-    @State private var expression: String = "0"
-    @State private var curResult: String = "0"
-
-    @State private var canOp: Bool = true
-
-    private var hasOp: Bool {
-        get {
-            self.expression.hasSuffix("+") ||
-                    self.expression.hasSuffix("-") ||
-                    self.expression.hasSuffix("×") ||
-                    self.expression.hasSuffix("÷")
-        }
-    }
+    @State private var displayValue: String = "0"
+    @State private var lastOp: String = ""
+    @State private var lastOp2: String = ""
+    @State private var prefixNums: [String] = []
+    @State private var lastOpNumber = ""
 
     func action(op: String) -> Void {
         switch op {
         case "C":
             operators[0].text = "AC"
-            curResult = "0"
-            canOp = true
+            displayValue = "0"
             break
         case "AC":
             resetAll()
             break
         case "=":
+            if (prefixNums.isEmpty && lastOpNumber == "" && lastOp2 == "") {
+                return
+            }
+            if (lastOp2 != "" && prefixNums.isEmpty && lastOpNumber == "") {
+                prefixNums.append(displayValue)
+                prefixNums.append(lastOp2)
+            } else if (lastOpNumber != "" && lastOp != "") {
+                prefixNums.append(displayValue)
+                prefixNums.append(lastOp2)
+                prefixNums.append(lastOpNumber)
+            } else {
+                prefixNums.append(displayValue)
+            }
             calc()
+            lastOp = lastOp2
             break
         case "+", "-", "×", "÷":
-            if (!canOp) {
-                break
-            }
-            canOp = false
-            if (expression == "0") {
-                expression = curResult
-            } else {
-                expression += curResult
-            }
-            if (hasOp) {
-                print(expression.endIndex)
-                expression.remove(at: expression.index(before: expression.endIndex))
-            }
-            expression += op
-            print(expression)
+            lastOp = op
+            lastOp2 = op
             break
         case "±":
-            if (curResult.hasPrefix("-")) {
-                curResult.remove(at: curResult.startIndex)
-            } else if (curResult != "0") {
-                curResult = "-" + curResult
+            if (lastOp != "") {
+                prefixNums.append(displayValue)
+                prefixNums.append(lastOp)
+                lastOp = ""
+            }
+            if (displayValue.hasPrefix("-")) {
+                displayValue.removeFirst()
+            } else if (displayValue != "0") {
+                displayValue = "-" + displayValue
             }
             break
         case "%":
+            let f = (displayValue as NSString).doubleValue
+            if (f == 0.0) {
+                displayValue = "0"
+            } else {
+                displayValue = String(f / 100.0)
+            }
             break
         case ".":
-            if (!curResult.contains(".")) {
-                curResult += "."
+            if (!displayValue.contains(".")) {
+                displayValue += "."
             }
             break
         default:
             if (operators[0].text == "AC") {
                 operators[0].text = "C"
             }
-            if (hasOp && !canOp) {
-                curResult = "0"
+            if (lastOp != "") {
+                prefixNums.append(displayValue)
+                prefixNums.append(lastOp)
+                lastOp = ""
+                displayValue = "0"
             }
-            if (!canOp) {
-                canOp = true
-            }
-            print(curResult, expression)
-            if (curResult == "0") {
-                curResult = op
+            if (displayValue == "0") {
+                displayValue = op
             } else {
-                curResult += op
+                displayValue += op
             }
+            lastOpNumber = displayValue
             break
         }
     }
 
     func resetAll() {
-        self.operators[0].text = "AC"
-        self.expression = "0"
-        self.curResult = "0"
+        displayValue = "0"
+        prefixNums.removeAll()
+        lastOpNumber = ""
+        lastOp = ""
+        lastOp2 = ""
+    }
+
+    func isOp(op: String) -> Bool {
+        switch op {
+        case "+", "-", "×", "÷", "(", ")":
+            return true
+        default:
+            return false
+        }
+    }
+
+    func greatThan(op1: String, op2: String) -> Bool {
+        switch op1 {
+        case "(", "-", "+":
+            return false
+        default:
+            break
+        }
+        switch op2 {
+        case "*", "÷":
+            return false
+        default:
+            return true
+        }
     }
 
     func calc() {
-        if (!canOp) {
-            expression += "0"
-        } else {
-            expression += curResult
+        if (prefixNums.isEmpty) {
+            return
         }
-        curResult = expression
+        var opera: [String] = []
+        var suffix: [String] = []
+        for op in prefixNums {
+            com:
+            if (isOp(op: op)) {
+                if (op == ")") {
+                    while (!opera.isEmpty) {
+                        let this = opera.removeLast()
+                        if (this == "(") {
+                            break
+                        }
+                        suffix.append(this)
+                    }
+                } else if (op == "(" || opera.isEmpty || greatThan(op1: op, op2: opera.last!)) {
+                    opera.append(op)
+                } else {
+                    suffix.append(opera.removeLast())
+                    break com
+                }
+            } else {
+                suffix.append(op)
+            }
+        }
+        while (!opera.isEmpty) {
+            suffix.append(opera.removeLast())
+        }
+        print("suffix", suffix)
+        print("prefixNums", prefixNums)
+        var nums: [Double] = []
+        for op in suffix {
+            if (isOp(op: op)) {
+                print(nums.count)
+                let op1 = nums.removeLast()
+                let op2 = nums.removeLast()
+                nums.append(computer(a: op2, b: op1, op: op))
+            } else {
+                nums.append((op as NSString).doubleValue)
+            }
+        }
+        print("nums", nums)
+        prefixNums.removeAll()
+        var r = String(nums[0])
+        if (r.hasSuffix(".0")) {
+            r.removeLast()
+            r.removeLast()
+        }
+        displayValue = r
+    }
+
+    func computer(a: Double, b: Double, op: String) -> Double {
+        switch op {
+        case "+":
+            return a + b
+        case "-":
+            return a - b
+        case "×":
+            return a * b
+        case "÷":
+            return a / b
+        default:
+            return 0.0
+        }
     }
 
     var body: some View {
         VStack {
-            Text(curResult)
+            Text(displayValue)
                     .foregroundColor(Color(hex: "#FDF1E1"))
                     .font(.system(size: 180))
                     .minimumScaleFactor(0.01)
@@ -201,7 +288,7 @@ struct ContentView: View {
                 Button(action: { action(op.text) }) {
                     Text(op.text)
                             .foregroundColor(Color(hex: "#FDF1E1"))
-                            .font(.system(size: 100))
+                            .font(.system(size: 68))
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .background(Color(hex: op.bg))
                 }
